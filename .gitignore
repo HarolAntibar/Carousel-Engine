@@ -1,0 +1,110 @@
+# =============================================================================
+# PROYECTO RAG - CONFIGURACIÓN DE GOBERNANZA (REGLAS DE SEGURIDAD)
+# =============================================================================
+
+# Operating System Files
+.DS_Store
+.DS_Store?
+._*
+Thumbs.db
+desktop.ini
+
+# -----------------------------------------------------------------------------
+# 1. ENTORNOS VIRTUALES (Modularización)
+# -----------------------------------------------------------------------------
+# Ignora cualquier venv en cualquier nivel (Raíz, backend/venv, ui/venv)
+venv/
+.venv/
+env/
+.env/
+bin/
+Include/
+Lib/
+Scripts/
+pyvenv.cfg
+pip-log.txt
+
+# -----------------------------------------------------------------------------
+# 2. SECRETOS Y LLAVES (¡CRÍTICO PARA SEGURIDAD!)
+# -----------------------------------------------------------------------------
+# Ignora el .env de la raíz y de cualquier subcarpeta (como backend/.env)
+.env
+.env.*
+**/.env
+*.pem
+*.key
+credentials.json
+client_secret.json
+# Permitimos el ejemplo para que el cliente sepa qué configurar
+!.env.example
+
+# -----------------------------------------------------------------------------
+# 3. BASES DE DATOS LOCALES (por si se añaden en el futuro)
+# -----------------------------------------------------------------------------
+*.db
+*.sqlite
+*.sqlite3
+
+# -----------------------------------------------------------------------------
+# 4. ARCHIVOS TEMPORALES Y DATA (Evita leaks de documentos)
+# -----------------------------------------------------------------------------
+# Carpeta de procesamiento híbrido
+backend/temp/
+# Archivos de datos en el backend (No queremos subir los PDFs originales a GitHub)
+backend/data/*.pdf
+backend/data/*.csv
+# Documentos generales
+*.pdf
+*.docx
+
+# -----------------------------------------------------------------------------
+# 5. CACHÉ DE PYTHON Y HERRAMIENTAS
+# -----------------------------------------------------------------------------
+__pycache__/
+**/__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.coverage
+.mypy_cache/
+.pyright_cache/
+pyrightconfig.json
+
+# -----------------------------------------------------------------------------
+# 6. IDEs Y NOTAS PERSONALES
+# -----------------------------------------------------------------------------
+.idea/
+.vscode/
+# Si quieres compartir tu configuración de VS Code, comenta la línea de abajo
+!.vscode/launch.json
+*.swp
+*.swo
+*~
+# Archivos de trabajo con Claude (Opcional)
+.claudeignore
+claude.md
+
+# -----------------------------------------------------------------------------
+# 7. LOGS
+# -----------------------------------------------------------------------------
+logs/
+*.log
+
+# -----------------------------------------------------------------------------
+# 8. OUTPUT GENERADO — imágenes de carruseles (no pertenecen al repo)
+# -----------------------------------------------------------------------------
+carousels/
+
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+.env
+credentials.json
+.agents/
