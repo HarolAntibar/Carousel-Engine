@@ -44,18 +44,13 @@ FONTS_DIR = Path(__file__).resolve().parent.parent.parent / "assets" / "fronts" 
 
 @dataclass(frozen=True)
 class AtmosphereStyle:
-    bg_color: tuple[int, int, int]       # RGB fallback background (used if Flux fails)
     text_color: tuple[int, int, int]     # RGB text color — all atmospheres use white for dark photo contrast
 
     # font_key: logical name resolved to a file path via FONT_CANDIDATES below.
     # Using a key (not a path) keeps templates.py decoupled from file system details.
     font_key: str
 
-    font_size: int = 72                  # Base font size for body text (px)
     text_padding: int = 80               # Horizontal margin from image edge to text (px)
-
-    # Optional gradient definition for bg_color — used for reference/future use.
-    bg_gradient: tuple[tuple[int, int, int], tuple[int, int, int]] | None = None
 
 
 # Priority-ordered font candidates per weight.
@@ -76,76 +71,57 @@ ATMOSPHERE_STYLES: dict[str, AtmosphereStyle] = {
 
     # Deep Work: focus and invisible complexity. Medium weight — readable, not aggressive.
     "Deep Work": AtmosphereStyle(
-        bg_color=(10, 10, 10),
         text_color=(255, 255, 255),
         font_key="medium",
-        font_size=68,
         text_padding=48,
     ),
 
-    # Momentum: energy and progress. Bold weight + blue gradient — velocity.
+    # Momentum: energy and progress. Bold weight — velocity.
     "Momentum": AtmosphereStyle(
-        bg_color=(26, 26, 46),
         text_color=(255, 255, 255),
         font_key="bold",
-        font_size=72,
         text_padding=52,
-        bg_gradient=((26, 26, 46), (15, 52, 96)),
     ),
 
     # Clarity: realizations and perspective shifts. Regular weight — open, breathable.
     "Clarity": AtmosphereStyle(
-        bg_color=(250, 250, 250),
         text_color=(255, 255, 255),
         font_key="regular",
-        font_size=72,
         text_padding=64,
     ),
 
     # Brutalism: hard truths. Black weight — maximum visual impact.
     "Brutalism": AtmosphereStyle(
-        bg_color=(255, 255, 0),
         text_color=(255, 255, 255),
         font_key="black",
-        font_size=80,
         text_padding=44,
     ),
 
-    # Ember: passion and personal obsession. Bold + warm gradient.
+    # Ember: passion and personal obsession. Bold weight — warm intensity.
     "Ember": AtmosphereStyle(
-        bg_color=(18, 10, 6),
         text_color=(255, 255, 255),
         font_key="bold",
-        font_size=70,
         text_padding=50,
-        bg_gradient=((18, 10, 6), (40, 18, 8)),
     ),
 
-    # Violet: creativity and strategy. Medium weight + purple depth.
+    # Violet: creativity and strategy. Medium weight — elevated tone.
     "Violet": AtmosphereStyle(
-        bg_color=(18, 8, 32),
         text_color=(255, 255, 255),
         font_key="medium",
-        font_size=70,
         text_padding=50,
-        bg_gradient=((18, 8, 32), (45, 18, 72)),
     ),
 
     # Fog: honest reflection. Regular weight — slow, soft, introspective.
     "Fog": AtmosphereStyle(
-        bg_color=(220, 220, 218),
         text_color=(255, 255, 255),
         font_key="regular",
-        font_size=70,
         text_padding=60,
     ),
 
-    # Neon: entertainment and digital culture. Bold + magenta — fast and loud.
+    # Neon: entertainment and digital culture. Bold weight — fast and loud.
     "Neon": AtmosphereStyle(
-        bg_color=(4, 4, 4),
         text_color=(255, 255, 255),
         font_key="bold",
-        font_size=72,
         text_padding=48,
     ),
 }

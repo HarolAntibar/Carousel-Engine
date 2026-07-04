@@ -200,7 +200,8 @@ Example output: "La mayoría de los developers que conozco son técnicamente só
 Respond with ONLY the enriched text. No preamble. No explanation."""
 
 
-# Usado por brain.py cuando Claude devuelve slides que superan 120 chars.
+# Usado por brain.py cuando Claude devuelve slides que superan sus límites
+# reales (50 chars el title, 110 el body — ver _FIELD_LIMITS en brain.py).
 # Se formatea con {offending_slides} antes de enviarlo como corrección.
 SLIDE_LENGTH_CORRECTION_PROMPT = """Some slide fields exceed their character limit. Rewrite ONLY the fields listed below.
 

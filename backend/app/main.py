@@ -54,7 +54,7 @@ async def flux_error_handler(request: Request, exc: FluxGenerationError) -> JSON
 
 
 # Health check endpoint — standard practice for any deployed service.
-# Used by load balancers, Docker healthchecks, and uptime monitors to verify
+# Used by load balancers and uptime monitors to verify
 # the service is alive. Returns 200 OK if the process is running.
 @app.get("/health")
 async def health() -> dict[str, str]:

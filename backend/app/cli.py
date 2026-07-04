@@ -7,6 +7,15 @@
 # USAGE
 #   python -m app.cli generate
 #   python -m app.cli generate "why senior developers write less code"
+#   python -m app.cli generate "already detailed topic" --raw
+#
+# PIPELINE PARITY WITH THE API
+# ----------------------------
+# The CLI runs the SAME pipeline as POST /generate: enrich → process → guard →
+# images. One pipeline, predictable behavior — a carousel generated via CLI is
+# identical to one generated via HTTP.
+# The --raw flag skips the enrichment step, for when you want to test a topic
+# that is already detailed (the enrichment would just add noise on top).
 #
 # WHY THE IMPORTS ARE INSIDE THE FUNCTION
 # -----------------------------------------
@@ -23,9 +32,12 @@
 # it creates a new event loop, runs the coroutine until it completes, and closes
 # the loop. Never call asyncio.run() inside an async function (use await instead).
 #
-# NOTE: The CLI calls brain.process_topic() directly (skipping enrich_topic).
-# The HTTP API calls both. For quick local tests this is intentional — you can
-# pass an already-detailed topic and skip the enrichment step.
+# EXIT CODES
+# ----------
+# 0 — carousel generated successfully
+# 1 — error (Claude failed, Flux failed, invalid usage)
+# 2 — content rejected by the authority_score guard (not an error: the
+#     pipeline worked, the content just didn't meet the quality bar)
 # =============================================================================
 
 import asyncio
@@ -36,23 +48,44 @@ from datetime import datetime
 logging.basicConfig(level=logging.INFO, format="%(levelname)s | %(message)s")
 
 
-async def _generate(topic: str) -> None:
+async def _generate(topic: str, raw: bool = False) -> None:
     # Deferred imports — see note above about why these are not at the top level.
+    from app.config.settings import settings
     from app.core import brain
     from app.core.brain import BrainProcessingError
     from app.image_engine import generator
     from app.image_engine.flux_client import FluxGenerationError
 
     print(f"\nTopic: {topic}")
-    print("Generating slides with Claude...")
 
+    enriched = topic
+    if not raw:
+        print("Enriching topic with Claude...")
+        try:
+            enriched = await brain.enrich_topic(topic)
+        except BrainProcessingError as e:
+            print(f"\n[ERROR] Topic enrichment failed: {e}")
+            sys.exit(1)
+        print(f"Enriched: {enriched}")
+
+    print("Generating slides with Claude...")
     try:
-        content = await brain.process_topic(topic)
+        content = await brain.process_topic(enriched)
     except BrainProcessingError as e:
         print(f"\n[ERROR] Claude failed: {e}")
         sys.exit(1)
 
     print(f"Atmosphere: {content.atmosphere} | Score: {content.authority_score:.2f}")
+
+    # Same guard as POST /generate: reject low-quality content BEFORE spending
+    # on image generation (6 fal.ai calls saved per rejection).
+    if content.authority_score < settings.authority_threshold:
+        print(
+            f"\n[REJECTED] Score {content.authority_score:.2f} is below "
+            f"threshold {settings.authority_threshold} — no images generated."
+        )
+        sys.exit(2)
+
     print("Generating backgrounds with Flux...")
 
     carousel_id = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -68,21 +101,22 @@ async def _generate(topic: str) -> None:
         print(f"  {path}")
 
 
-def cmd_generate(topic: str = "") -> None:
+def cmd_generate(topic: str = "", raw: bool = False) -> None:
     if not topic:
         topic = input("\nWhat is the topic or idea for the carousel?\n> ").strip()
     if not topic:
         print("Error: topic cannot be empty.")
         sys.exit(1)
-    asyncio.run(_generate(topic))
+    asyncio.run(_generate(topic, raw))
 
 
 if __name__ == "__main__":
     args = sys.argv[1:]
 
     if not args or args[0] != "generate":
-        print('Usage: python -m app.cli generate ["optional topic"]')
+        print('Usage: python -m app.cli generate ["optional topic"] [--raw]')
         sys.exit(1)
 
-    topic_arg = " ".join(args[1:]) if len(args) > 1 else ""
-    cmd_generate(topic_arg)
+    raw_flag = "--raw" in args
+    topic_arg = " ".join(a for a in args[1:] if a != "--raw")
+    cmd_generate(topic_arg, raw_flag)

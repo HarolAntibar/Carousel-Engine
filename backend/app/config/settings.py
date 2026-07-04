@@ -36,8 +36,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     # Tells pydantic-settings where to find the .env file.
-    # When running with Docker (--env-file flag), the .env is injected
-    # directly into os.environ and this file path is irrelevant.
+    # Real environment variables take precedence over values read from .env.
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 
     # ── Required (no default → app crashes at startup if missing) ────────────
@@ -58,6 +57,11 @@ class Settings(BaseSettings):
     # Root folder where generated carousel images are saved.
     # Structure on disk: {carousels_output_dir}/{carousel_id}/slide_1.jpg ... slide_6.jpg
     carousels_output_dir: str = "./carousels"
+
+    # Watermark handle drawn in the bottom-right corner of every slide.
+    # Personal identity is configuration, not logic — change it here (or via
+    # WATERMARK_HANDLE in .env), never hardcoded in compositor.py.
+    watermark_handle: str = "@Harol_antibar"
 
     # Claude model to use. Swappable without changing any business logic.
     # claude-haiku is the fastest and cheapest model in the Claude 4 family —

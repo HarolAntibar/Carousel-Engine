@@ -93,14 +93,7 @@ async def process_topic(topic: str) -> CarouselContent:
         raise BrainProcessingError(f"Claude API call failed: {e}") from e
 
     raw_content = response.content[0].text
-
-    # Strip markdown fences if Claude wraps the JSON in ```json ... ```.
-    # This happens occasionally even when the prompt says not to.
-    stripped = raw_content.strip()
-    if stripped.startswith("```"):
-        stripped = "\n".join(stripped.splitlines()[1:])
-        if stripped.rstrip().endswith("```"):
-            stripped = stripped.rstrip()[:-3]
+    stripped = _strip_markdown_fences(raw_content)
 
     # raw_decode() parses the FIRST complete JSON object in the string and
     # ignores anything after it. This handles cases where Claude appends an
@@ -134,12 +127,28 @@ async def process_topic(topic: str) -> CarouselContent:
         raise BrainProcessingError(f"Claude response failed schema validation: {e}") from e
 
 
+def _strip_markdown_fences(text: str) -> str:
+    """Remove ```json ... ``` fences if Claude wrapped its JSON output in them.
+
+    This happens occasionally even when the prompt says not to. It's handled
+    explicitly because a fence is a KNOWN quirk of model output — not missing
+    data being silently papered over.
+    """
+    stripped = text.strip()
+    if not stripped.startswith("```"):
+        return stripped
+    stripped = "\n".join(stripped.splitlines()[1:])
+    if stripped.rstrip().endswith("```"):
+        stripped = stripped.rstrip()[:-3]
+    return stripped
+
+
 # Field limits mirror the Pydantic constraints in schemas.py.
 # Defined here (not imported) to keep this module self-contained for the correction logic.
 _FIELD_LIMITS = {"title": 50, "body": 110}
 
 
-async def _fix_slide_lengths(data: dict, errors: list) -> dict:
+async def _fix_slide_lengths(data: dict, errors: list[dict]) -> dict:
     """Ask Claude to rewrite only the fields that exceed their character limit."""
     offending_lines = []
     for err in errors:
@@ -166,11 +175,7 @@ async def _fix_slide_lengths(data: dict, errors: list) -> dict:
     except Exception as e:
         raise BrainProcessingError(f"Slide length correction API call failed: {e}") from e
 
-    raw = response.content[0].text.strip()
-    if raw.startswith("```"):
-        raw = "\n".join(raw.splitlines()[1:])
-        if raw.rstrip().endswith("```"):
-            raw = raw.rstrip()[:-3]
+    raw = _strip_markdown_fences(response.content[0].text)
 
     try:
         corrections: dict[str, str] = json.loads(raw)

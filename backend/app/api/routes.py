@@ -32,9 +32,9 @@ from datetime import datetime
 
 from fastapi import APIRouter
 
-from app.config.settings import settings  # noqa: F401 — imported for side-effect (startup validation)
+from app.config.settings import settings
 from app.core import brain
-from app.core.schemas import GenerateRequest, GenerateResponse
+from app.core.schemas import GenerateRequest, GenerateResponse, RejectedResponse
 from app.image_engine import generator
 
 
@@ -42,7 +42,7 @@ router = APIRouter()
 
 
 @router.post("/generate")
-async def generate(request: GenerateRequest) -> GenerateResponse:
+async def generate(request: GenerateRequest) -> GenerateResponse | RejectedResponse:
     # Timestamp-based ID — simple and sortable. In a multi-instance deployment
     # you'd want a UUID instead to avoid collisions.
     carousel_id = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -53,6 +53,19 @@ async def generate(request: GenerateRequest) -> GenerateResponse:
 
     # Step 2: Generate 6 slides + atmosphere + flux prompts from the enriched topic.
     content = await brain.process_topic(enriched)
+
+    # Guard: reject low-quality content BEFORE spending on image generation.
+    # This is the ONLY quality gate in the pipeline — a rejection costs 2 Haiku
+    # calls (~$0.001) instead of 2 Haiku calls + 6 fal.ai images.
+    if content.authority_score < settings.authority_threshold:
+        return RejectedResponse(
+            authority_score=content.authority_score,
+            atmosphere=content.atmosphere,
+            reason=(
+                f"authority_score {content.authority_score:.2f} is below "
+                f"threshold {settings.authority_threshold}"
+            ),
+        )
 
     # Step 3: Generate 6 photorealistic backgrounds in parallel, composite text
     # over each one, and save to disk. Returns the list of file paths.

@@ -79,6 +79,23 @@ class CarouselContent(BaseModel):
 
 # ── Outbound ─────────────────────────────────────────────────────────────────
 
+class RejectedResponse(BaseModel):
+    # Returned when authority_score < settings.authority_threshold — BEFORE any
+    # image generation happens, so a low-quality carousel costs 2 Haiku calls
+    # and zero fal.ai calls.
+    #
+    # Literal[True] with a default: the field always exists and is always True.
+    # Callers can distinguish a rejection from a full GenerateResponse with a
+    # single `if response.rejected` check.
+    rejected: Literal[True] = True
+
+    authority_score: float = Field(ge=0.0, le=1.0)
+    atmosphere: Atmosphere
+
+    # Human-readable explanation — includes the score and the threshold it missed.
+    reason: str
+
+
 class GenerateResponse(BaseModel):
     slides: list[SlideItem]
     atmosphere: Atmosphere

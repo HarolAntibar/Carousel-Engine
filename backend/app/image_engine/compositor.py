@@ -50,17 +50,22 @@ import logging
 
 from PIL import Image, ImageDraw, ImageFont
 
+from app.config.settings import settings
 from app.image_engine.templates import (
     ATMOSPHERE_STYLES,
     FONT_CANDIDATES,
     IMAGE_HEIGHT,
     IMAGE_WIDTH,
+    AtmosphereStyle,
 )
 
 
 logger = logging.getLogger(__name__)
 
-_HANDLE            = "@Harol_antibar"
+# PIL font union: TrueType in the normal case, or the bitmap fallback
+# returned by ImageFont.load_default() when no .ttf could be loaded.
+_Font = ImageFont.FreeTypeFont | ImageFont.ImageFont
+
 _HANDLE_FONT_SIZE  = 30
 _HANDLE_ALPHA      = 160          # 0–255. 160 ≈ 63% opacity — visible but subtle.
 
@@ -114,7 +119,7 @@ def composite_slide(
 
 # ── Portada (slide 1 — cover) ─────────────────────────────────────────────────
 
-def _render_portada(image: Image.Image, title: str, body: str, style) -> Image.Image:
+def _render_portada(image: Image.Image, title: str, body: str, style: AtmosphereStyle) -> Image.Image:
     title_font = _load_font("black", _PORTADA_TITLE_SIZE)
     body_font  = _load_font("medium", _PORTADA_BODY_SIZE)
 
@@ -146,7 +151,7 @@ def _render_portada(image: Image.Image, title: str, body: str, style) -> Image.I
 
 # ── Content slides (slides 2–6) ───────────────────────────────────────────────
 
-def _render_content(image: Image.Image, title: str, body: str, style) -> Image.Image:
+def _render_content(image: Image.Image, title: str, body: str, style: AtmosphereStyle) -> Image.Image:
     title_font = _load_font("black", _CONTENT_TITLE_SIZE)
     body_font  = _load_font(style.font_key, _CONTENT_BODY_SIZE)
 
@@ -220,7 +225,7 @@ def _block_height(lines: list[str], line_height: int) -> int:
     return len(lines) * line_height
 
 
-def _line_render_width(line: str, font, extra_word_spacing: int) -> int:
+def _line_render_width(line: str, font: _Font, extra_word_spacing: int) -> int:
     """Calculate the total rendered width of a line, optionally with extra word spacing."""
     if extra_word_spacing == 0:
         bbox = font.getbbox(line) if hasattr(font, "getbbox") else (0, 0, len(line) * 20, 30)
@@ -239,7 +244,7 @@ def _line_render_width(line: str, font, extra_word_spacing: int) -> int:
 def _draw_line_rgba(
     draw: ImageDraw.ImageDraw,
     line: str,
-    font,
+    font: _Font,
     x: int,
     y: int,
     color: tuple[int, int, int, int],
@@ -266,8 +271,8 @@ def _draw_two_level(
     draw: ImageDraw.ImageDraw,
     title_lines: list[str],
     body_lines: list[str],
-    title_font,
-    body_font,
+    title_font: _Font,
+    body_font: _Font,
     title_lh: int,
     body_lh: int,
     color: tuple[int, int, int],
@@ -315,7 +320,7 @@ def _draw_two_level(
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
-def _load_font(font_key: str, size: int) -> ImageFont.FreeTypeFont | ImageFont.ImageFont:
+def _load_font(font_key: str, size: int) -> _Font:
     """Load a font by weight key at the given size. Falls back gracefully if file not found."""
     for candidate in FONT_CANDIDATES[font_key]:
         try:
@@ -329,7 +334,7 @@ def _load_font(font_key: str, size: int) -> ImageFont.FreeTypeFont | ImageFont.I
 
 def _wrap_text(
     text: str,
-    font: ImageFont.FreeTypeFont | ImageFont.ImageFont,
+    font: _Font,
     max_width: int,
 ) -> list[str]:
     """Break text into lines that fit within max_width pixels."""
@@ -360,14 +365,15 @@ def _draw_handle(image: Image.Image, text_color: tuple[int, int, int]) -> Image.
     overlay = Image.new("RGBA", rgba.size, (0, 0, 0, 0))
     draw    = ImageDraw.Draw(overlay)
 
+    handle     = settings.watermark_handle
     font       = _load_font("regular", _HANDLE_FONT_SIZE)
     main_color = (*text_color, _HANDLE_ALPHA)
 
-    bbox = font.getbbox(_HANDLE) if hasattr(font, "getbbox") else (0, 0, len(_HANDLE) * 15, _HANDLE_FONT_SIZE)
+    bbox = font.getbbox(handle) if hasattr(font, "getbbox") else (0, 0, len(handle) * 15, _HANDLE_FONT_SIZE)
     # 72px margin from the right and bottom edges.
     x = IMAGE_WIDTH - (bbox[2] - bbox[0]) - 72
     y = IMAGE_HEIGHT - 72
 
-    draw.text((x, y), _HANDLE, font=font, fill=main_color)
+    draw.text((x, y), handle, font=font, fill=main_color)
 
     return Image.alpha_composite(rgba, overlay).convert("RGB")

@@ -45,7 +45,6 @@ PIL composites text over each background
 | Image generation | fal.ai — Flux Realism |
 | Text overlay | PIL / Pillow |
 | Validation | Pydantic V2 |
-| Containerization | Docker |
 
 ---
 
@@ -69,7 +68,6 @@ Claude automatically classifies each topic into one of 8 visual styles:
 ## Project Structure
 
 ```
-├── Dockerfile
 ├── backend/
 │   ├── requirements.txt
 │   ├── .env.example
@@ -97,8 +95,6 @@ Claude automatically classifies each topic into one of 8 visual styles:
 
 ## Setup
 
-### Using Docker (recommended)
-
 **1. Configure environment variables**
 
 ```bash
@@ -112,14 +108,7 @@ ANTHROPIC_API_KEY=sk-ant-...
 FAL_KEY=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx:...
 ```
 
-**2. Build and run**
-
-```bash
-docker build -t content-automation .
-docker run -p 8000:8000 --env-file backend/.env content-automation
-```
-
-### Local development
+**2. Install dependencies and run**
 
 ```bash
 cd backend
@@ -200,7 +189,7 @@ python -m app.cli generate "the real reason your side project never ships"
 
 **Parallel image generation** — All 6 Flux calls run concurrently via `asyncio.gather()`. Sequential generation would take 5× longer for no reason.
 
-**Bundled Inter font** — No system font dependency. The Inter family ships inside `assets/` so the output looks identical in Docker, local dev, and CI.
+**Bundled Inter font** — No system font dependency. The Inter family ships inside `assets/` so the output looks identical on any machine.
 
 ---
 
@@ -210,6 +199,5 @@ python -m app.cli generate "the real reason your side project never ships"
 - [x] 8 visual atmosphere templates
 - [x] fal.ai Flux Realism — parallel generation with retry
 - [x] PIL compositor — gradient, centering, watermark
-- [x] Docker packaging
 - [ ] Social publishing — Instagram Graph API, TikTok API
 - [ ] Batch generation from a topic list
