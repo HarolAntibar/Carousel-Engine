@@ -18,7 +18,9 @@
 #
 # is_portada=False (slides 2–6 — content):
 #   Text block centered at 58% height (lower portion).
-#   Dark gradient fades in from above the text and covers down to the bottom.
+#   Floating dark scrim wraps just around the text — same as the portada.
+#   (The old to-the-bottom veil crushed the lower half of every slide, where
+#   the desk/hands/keyboard live in the reference aesthetic.)
 #   Short separator line between title and body.
 #
 # WHY RGBA OVERLAY PATTERN
@@ -48,7 +50,7 @@
 
 import logging
 
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFont, ImageStat
 
 from app.config.settings import settings
 from app.image_engine.templates import (
@@ -94,8 +96,12 @@ _BODY_WORD_SPACING = 3
 
 _PORTADA_PADDING = 44            # Horizontal padding for portada text (px)
 
-# Gradient constants — controls the dark backdrop behind the text area.
-_GRADIENT_MAX_ALPHA = 150        # Max opacity of the gradient (0–255). 150 ≈ 59%.
+# Gradient constants — the scrim ADAPTS to the scene. A dim night frame needs
+# little darkening for white text; a bright daylight frame (also part of the
+# reference aesthetic) needs more. The alpha interpolates between these bounds
+# based on the measured luminance of the band where the text will sit.
+_GRADIENT_ALPHA_MIN = 110        # scrim over an already-dark text band (≈43%)
+_GRADIENT_ALPHA_MAX = 185        # scrim over a bright/daylight text band (≈73%)
 _GRADIENT_FADE_PX   = 240        # Pixels over which the gradient fades from transparent to solid.
 _GRADIENT_PADDING   = 60         # Extra space above/below the text block inside the gradient.
 
@@ -138,7 +144,7 @@ def _render_portada(image: Image.Image, title: str, body: str, style: Atmosphere
     draw    = ImageDraw.Draw(overlay)
 
     # Floating gradient: wraps only around the text block (fades in above, fades out below).
-    _draw_text_gradient(draw, center_y, total_h, floating=True)
+    _draw_text_gradient(draw, center_y, total_h, _scrim_alpha(image, center_y, total_h))
     _draw_two_level(
         draw, title_lines, body_lines, title_font, body_font,
         _PORTADA_TITLE_LH, _PORTADA_BODY_LH, style.text_color, center_y,
@@ -168,8 +174,8 @@ def _render_content(image: Image.Image, title: str, body: str, style: Atmosphere
     overlay = Image.new("RGBA", rgba.size, (0, 0, 0, 0))
     draw    = ImageDraw.Draw(overlay)
 
-    # Bottom gradient: fades in above the text and covers down to the image edge.
-    _draw_text_gradient(draw, center_y, total_h, floating=False)
+    # Floating scrim around the text — the photo's bottom stays visible (reference look).
+    _draw_text_gradient(draw, center_y, total_h, _scrim_alpha(image, center_y, total_h))
     _draw_two_level(
         draw, title_lines, body_lines, title_font, body_font,
         _CONTENT_TITLE_LH, _CONTENT_BODY_LH, style.text_color, center_y,
@@ -182,16 +188,34 @@ def _render_content(image: Image.Image, title: str, body: str, style: Atmosphere
 
 # ── Gradient ──────────────────────────────────────────────────────────────────
 
+def _scrim_alpha(image: Image.Image, center_y: int, text_height: int) -> int:
+    """Measure how bright the text band is and pick the scrim opacity for it.
+
+    This is what lets the visual system span the FULL reference palette — from
+    2 AM amber desks to daylight cafes — without ever sacrificing white-text
+    legibility: dark scenes get a whisper of scrim, bright scenes get a heavier
+    one, and neither is hardcoded to an assumption about the scene.
+    """
+    top    = max(0, center_y - text_height // 2 - _GRADIENT_PADDING)
+    bottom = min(IMAGE_HEIGHT, center_y + text_height // 2 + _GRADIENT_PADDING)
+    band   = image.crop((0, top, IMAGE_WIDTH, bottom)).convert("L")
+    luminance = ImageStat.Stat(band).mean[0] / 255.0
+    return round(_GRADIENT_ALPHA_MIN + (_GRADIENT_ALPHA_MAX - _GRADIENT_ALPHA_MIN) * luminance)
+
+
 def _draw_text_gradient(
     draw: ImageDraw.ImageDraw,
     center_y: int,
     text_height: int,
-    floating: bool,
+    max_alpha: int,
 ) -> None:
-    """Draw a dark gradient behind the text block to ensure readability on any photo.
+    """Draw a floating dark scrim behind the text block to keep it readable.
 
-    floating=True  — portada: gradient wraps around the text (fades in above, fades out below).
-    floating=False — content: gradient fades in above the text and covers the rest of the image.
+    The scrim wraps the text only — solid behind the block, fading to
+    transparent above and below — so the photo stays visible everywhere else.
+    The reference images live on visible detail (glowing screens, lamp pools,
+    desk clutter); a veil to the bottom edge would crush all of it.
+    max_alpha comes from _scrim_alpha(): adapted to the band's brightness.
     """
     top    = center_y - text_height // 2 - _GRADIENT_PADDING
     bottom = center_y + text_height // 2 + _GRADIENT_PADDING
@@ -202,21 +226,17 @@ def _draw_text_gradient(
     if fade_height > 0:
         for y in range(fade_start, top):
             progress = (y - fade_start) / fade_height
-            alpha = int(_GRADIENT_MAX_ALPHA * progress)
+            alpha = int(max_alpha * progress)
             draw.line([(0, y), (IMAGE_WIDTH, y)], fill=(0, 0, 0, alpha))
 
-    if floating:
-        # Portada: solid zone around text only, then fade out below.
-        draw.rectangle([(0, top), (IMAGE_WIDTH, bottom)], fill=(0, 0, 0, _GRADIENT_MAX_ALPHA))
-        for i in range(_GRADIENT_FADE_PX):
-            y = bottom + i
-            if y >= IMAGE_HEIGHT:
-                break
-            alpha = int(_GRADIENT_MAX_ALPHA * (1 - i / _GRADIENT_FADE_PX))
-            draw.line([(0, y), (IMAGE_WIDTH, y)], fill=(0, 0, 0, alpha))
-    else:
-        # Content slides: solid from text top to the bottom of the image.
-        draw.rectangle([(0, top), (IMAGE_WIDTH, IMAGE_HEIGHT)], fill=(0, 0, 0, _GRADIENT_MAX_ALPHA))
+    # Solid zone around the text, then fade out below.
+    draw.rectangle([(0, top), (IMAGE_WIDTH, bottom)], fill=(0, 0, 0, max_alpha))
+    for i in range(_GRADIENT_FADE_PX):
+        y = bottom + i
+        if y >= IMAGE_HEIGHT:
+            break
+        alpha = int(max_alpha * (1 - i / _GRADIENT_FADE_PX))
+        draw.line([(0, y), (IMAGE_WIDTH, y)], fill=(0, 0, 0, alpha))
 
 
 # ── Text rendering ────────────────────────────────────────────────────────────

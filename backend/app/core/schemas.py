@@ -62,17 +62,36 @@ class SlideItem(BaseModel):
     body: str = Field(max_length=110)
 
 
+class SlidesDraft(BaseModel):
+    # Output of the WRITER call (brain.write_slides): text only, nothing visual.
+    # Splitting writing from art direction gives the copy a call with Claude's
+    # full attention — the voice no longer competes with 5 other tasks.
+    slides: list[SlideItem] = Field(min_length=6, max_length=6)
+
+
+class VisualPlan(BaseModel):
+    # Output of the VISUAL DIRECTOR call (brain.plan_visuals): everything the
+    # image engine needs, derived FROM the already-written slides.
+    atmosphere: Atmosphere
+
+    # Claude scores the content quality. Scores below settings.authority_threshold
+    # are rejected before spending on image generation.
+    authority_score: float = Field(ge=0.0, le=1.0)
+
+    # One visual scene description per slide, passed to Flux for background generation.
+    flux_prompts: list[str] = Field(min_length=6, max_length=6)
+
+
 class CarouselContent(BaseModel):
-    # Exactly 6 slides: 1 portada + 5 content slides.
+    # Assembled by brain.process_topic() from SlidesDraft + VisualPlan.
+    # This is the pipeline's internal contract — generator.py and routes.py
+    # consume it and never see the intermediate models above.
     slides: list[SlideItem] = Field(min_length=6, max_length=6)
 
     atmosphere: Atmosphere
 
-    # Claude self-scores the content quality. Scores below settings.authority_threshold
-    # could be used to reject low-quality content before spending on image generation.
     authority_score: float = Field(ge=0.0, le=1.0)
 
-    # One visual scene description per slide, passed to Flux for background generation.
     # These are plain English descriptions — Flux never renders text (it fails at that).
     flux_prompts: list[str] = Field(min_length=6, max_length=6)
 
@@ -81,7 +100,7 @@ class CarouselContent(BaseModel):
 
 class RejectedResponse(BaseModel):
     # Returned when authority_score < settings.authority_threshold — BEFORE any
-    # image generation happens, so a low-quality carousel costs 2 Haiku calls
+    # image generation happens, so a low-quality carousel costs 3 Claude calls
     # and zero fal.ai calls.
     #
     # Literal[True] with a default: the field always exists and is always True.

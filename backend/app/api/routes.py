@@ -55,8 +55,8 @@ async def generate(request: GenerateRequest) -> GenerateResponse | RejectedRespo
     content = await brain.process_topic(enriched)
 
     # Guard: reject low-quality content BEFORE spending on image generation.
-    # This is the ONLY quality gate in the pipeline — a rejection costs 2 Haiku
-    # calls (~$0.001) instead of 2 Haiku calls + 6 fal.ai images.
+    # This is the ONLY quality gate in the pipeline — a rejection costs 3 Claude
+    # calls (cents) instead of 3 Claude calls + 6 fal.ai images.
     if content.authority_score < settings.authority_threshold:
         return RejectedResponse(
             authority_score=content.authority_score,

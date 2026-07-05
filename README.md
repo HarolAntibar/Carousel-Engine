@@ -21,7 +21,7 @@ Claude generates 6 slides
   · 6 visual prompts for image generation
         │
         ▼
-fal.ai Flux Realism generates 6 backgrounds
+fal.ai FLUX.2 [pro] generates 6 backgrounds
 in parallel  (1080×1920 px, photorealistic)
         │
         ▼
@@ -42,7 +42,7 @@ PIL composites text over each background
 |---|---|
 | API | Python 3.13, FastAPI |
 | LLM | Claude (Anthropic SDK) |
-| Image generation | fal.ai — Flux Realism |
+| Image generation | fal.ai — FLUX.2 [pro] |
 | Text overlay | PIL / Pillow |
 | Validation | Pydantic V2 |
 
@@ -197,7 +197,7 @@ python -m app.cli generate "the real reason your side project never ships"
 
 - [x] FastAPI Brain — Claude topic enrichment + slide generation
 - [x] 8 visual atmosphere templates
-- [x] fal.ai Flux Realism — parallel generation with retry
+- [x] fal.ai FLUX.2 [pro] — parallel generation with retry
 - [x] PIL compositor — gradient, centering, watermark
 - [ ] Social publishing — Instagram Graph API, TikTok API
 - [ ] Batch generation from a topic list

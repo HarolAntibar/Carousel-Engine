@@ -1,7 +1,7 @@
 # =============================================================================
 # FILE: image_engine/flux_client.py
 # ROLE: Generate ONE photorealistic background image from a text prompt using
-#       the fal.ai Flux Realism model. Includes retry with exponential backoff.
+#       the fal.ai FLUX.2 [pro] model. Includes retry with exponential backoff.
 # =============================================================================
 #
 # SEPARATION OF CONCERNS
@@ -11,12 +11,14 @@
 # generator.py is responsible for orchestrating multiple calls to this file.
 # If fal.ai changes their API, you only touch this file.
 #
-# MODEL: fal-ai/flux-realism
-# --------------------------
-# Optimized for photorealistic output — lifestyle photography, not illustration.
-# 25 inference steps balances quality vs. speed for this use case.
-# guidance_scale=3.5 is the recommended value for this model (higher = more
-# literal prompt adherence, lower = more creative freedom).
+# MODEL: fal-ai/flux-2-pro
+# ------------------------
+# Black Forest Labs' flagship — top-tier photorealism (skin, light, anatomy)
+# with strong prompt adherence. Priced per megapixel (~$0.045 per 1080x1920).
+# The endpoint is zero-config: it does NOT accept negative_prompt,
+# num_inference_steps or guidance_scale. Everything the old negative_prompt
+# excluded (text, logos, CGI look, bright flat light) is now enforced as
+# NEVER INCLUDE rules in BRAIN_SYSTEM_PROMPT, which writes every prompt.
 #
 # WHY os.environ IS SET MANUALLY
 # --------------------------------
@@ -77,27 +79,14 @@ async def generate_background(prompt: str) -> Image.Image:
             await asyncio.sleep(wait)
         try:
             result = await fal_client.run_async(
-                "fal-ai/flux-realism",
+                "fal-ai/flux-2-pro",
                 arguments={
+                    # FLUX.2 [pro] has no negative_prompt — the exclusions
+                    # (text/watermarks, bright surfaces that would hide white
+                    # text, CGI/stock-photo looks) live in BRAIN_SYSTEM_PROMPT.
                     "prompt": prompt,
-                    # Negative prompt: things to avoid in the generated image.
-                    # Key exclusions: text/watermarks (PIL handles all text),
-                    # bright surfaces (would make white text invisible),
-                    # stock-photo aesthetics (we want lifestyle, not corporate).
-                    "negative_prompt": (
-                        "matrix, cyberpunk, green glowing code, server room, data center, "
-                        "hacker hoodie, sterile office, futuristic, neon city, sci-fi, "
-                        "multiple monitors filling the frame, fake UI, hallucinated screen content, "
-                        "bright harsh lighting, fluorescent office light, cold blue tones, "
-                        "CGI, 3D render, illustration, cartoon, anime, "
-                        "detailed faces, frontal portrait, crowd, "
-                        "text, typography, watermark, logo, "
-                        "surreal anatomy, distorted limbs, disfigured, deformed, low quality, blurry"
-                    ),
                     "image_size": {"width": IMAGE_WIDTH, "height": IMAGE_HEIGHT},
-                    "num_inference_steps": 25,
-                    "guidance_scale": 3.5,
-                    "num_images": 1,
+                    "output_format": "jpeg",
                     "enable_safety_checker": False,
                 },
             )

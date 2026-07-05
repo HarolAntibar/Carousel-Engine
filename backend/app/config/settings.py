@@ -64,13 +64,15 @@ class Settings(BaseSettings):
     watermark_handle: str = "@Harol_antibar"
 
     # Claude model to use. Swappable without changing any business logic.
-    # claude-haiku is the fastest and cheapest model in the Claude 4 family —
-    # ideal for structured JSON generation tasks like this one.
-    claude_model: str = "claude-haiku-4-5-20251001"
+    # claude-opus-4-8 is the Opus flagship — the copy and the flux prompts ARE
+    # the product, so the Brain runs on the strongest generally available
+    # model. Swap via CLAUDE_MODEL (e.g. claude-haiku-4-5) for cheaper runs.
+    claude_model: str = "claude-opus-4-8"
 
-    # Max tokens Claude is allowed to return. 2048 is enough for 6 slides
-    # (title + body each) plus 6 flux prompts with room to spare.
-    claude_max_tokens: int = 2048
+    # Max tokens Claude is allowed to return. Opus runs with adaptive thinking
+    # (see brain.py) and thinking tokens count toward this limit — 8192 leaves
+    # room for reasoning plus the full 6-slide JSON.
+    claude_max_tokens: int = 8192
 
     # PATTERN: Custom validator
     # @field_validator runs after the type coercion — the value is already a str

@@ -80,9 +80,7 @@ pyrightconfig.json
 *.swp
 *.swo
 *~
-# Archivos de trabajo con Claude (Opcional)
-.claudeignore
-claude.md
+
 
 # -----------------------------------------------------------------------------
 # 7. LOGS
